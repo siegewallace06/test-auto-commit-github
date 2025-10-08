@@ -1,3 +1,3 @@
 This is a File. This file contains some text.
 
-Current Counter: 2
+Current Counter: 3
