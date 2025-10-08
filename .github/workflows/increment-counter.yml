@@ -1,0 +1,63 @@
+name: Increment Counter
+
+# Manual trigger only
+on:
+    workflow_dispatch:
+
+jobs:
+    increment-counter:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  # Use a Personal Access Token for pushing to main branch
+                  # GITHUB_TOKEN has limited permissions for security
+                  token: ${{ secrets.PAT_TOKEN }}
+
+            - name: Read current counter
+              id: read-counter
+              run: |
+                  # Extract the current counter value from content.txt
+                  current_counter=$(grep "Current Counter:" content.txt | sed 's/Current Counter: //')
+                  echo "Current counter value: $current_counter"
+                  echo "current_counter=$current_counter" >> $GITHUB_OUTPUT
+
+            - name: Increment counter
+              id: increment
+              run: |
+                  # Calculate new counter value
+                  current_counter=${{ steps.read-counter.outputs.current_counter }}
+                  new_counter=$((current_counter + 1))
+                  echo "New counter value: $new_counter"
+                  echo "new_counter=$new_counter" >> $GITHUB_OUTPUT
+
+            - name: Update content.txt
+              run: |
+                  # Replace the counter value in content.txt
+                  new_counter=${{ steps.increment.outputs.new_counter }}
+                  sed -i "s/Current Counter: .*/Current Counter: $new_counter/" content.txt
+
+                  # Verify the change
+                  echo "Updated content.txt:"
+                  cat content.txt
+
+            - name: Commit and push changes
+              run: |
+                  # Configure git with GitHub Action bot credentials
+                  git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git config --local user.name "github-actions[bot]"
+
+                  # Check if there are any changes to commit
+                  if git diff --staged --quiet; then
+                      echo "No changes to commit"
+                      exit 0
+                  fi
+
+                  # Add and commit changes
+                  git add content.txt
+                  git commit -m "Auto-increment counter to ${{ steps.increment.outputs.new_counter }}"
+
+                  # Push directly to main branch using PAT
+                  git push origin main
